@@ -2,12 +2,11 @@ import multiparty from 'multiparty'
 import express from 'express'
 import request from 'request'
 import fs from 'fs'
-import util from 'util'
 
 import { getTasks, getTaskById, createTask, statuses, getTaskByRequestid } from '../db/tasks'
 
 const URL_SERVER2 = 'http://localhost:4000/upload'
-const UPLOAD_DIR = '../uploadsapp'
+const UPLOAD_DIR = './uploadsapp'
 
 export const getAllTasks = async (req: express.Request, res: express.Response) => {
   try {
@@ -35,46 +34,31 @@ export const getTask = async (req: express.Request, res: express.Response) => {
 
 export const createTaskController = async (req: express.Request, res: express.Response) => {
   try {
-    //await createTask({ requestid: req.id, status: statuses.PROCESSING_STARTED })
-    console.log('+++ 1 create task by requestid set status created', { reqid: req.id, status: 'processing_started' })
-    const form = new multiparty.Form()
+    const form = new multiparty.Form({ uploadDir: UPLOAD_DIR })
 
-    form.parse(req, async (err, fields, files) => { // срабатывает 2
+    form.parse(req, async (err, fields, files) => {
 
+      if (!files?.file[0]?.originalFilename || !files?.file[0]?.path)
+        return res.sendStatus(400).json({ message: 'File downloading error' })
 
-      // return res.status(200).json({ fields, files, task })
-      console.log('+++ 2 add originalFilename, pathserver1 to task by requestid set status uploaded_service_1', {
-        originalFilename: files.file[0].originalFilename,
-        pathserver1: files.file[0].path,
-        taskname: fields.taskname[0],
-        reqid: req.id,
-        status: 'uploaded_service_1',
-        
-      }) //  reqid taskname originalFilename pathserver1 pathserver2 status
+      const task = await createTask({
+        requestid: req.id,
+        status: statuses.UPLOADED_SERVICE_1,
+        originalFilename: files?.file[0]?.originalFilename,
+        pathFileServer1: files?.file[0]?.path,
+        taskname: fields?.taskname[0],
+      })
 
-      await createTask({ requestid: req.id, status: statuses.PROCESSING_STARTED })
-      const task = await getTaskByRequestid(req.id)
-
-      task.originalFilename = files?.file[0]?.originalFilename
-      task.pathFileServer1 = files?.file[0]?.path
-      task.taskname = fields?.taskname[0]
-      task.status = statuses.UPLOADED_SERVICE_1
-
-      const result = await task.save()
-
-      res.writeHead(200, { 'content-type': 'text/plain' });
-      res.write('received upload:\n\n');
-      res.end(util.inspect({ fields: fields, files: files }));
+      return res.status(201).json({ task, err, fields, files })
     })
 
     let progressBar = 0;
     form.on('progress', function (a, b) {
       const percents = Math.floor(a / b * 100)
-      console.log(`downloading progress ${req.id}: ${percents}%`)
-      // if (percents > progressBar + 9) {
-      //   progressBar = percents
-      //   console.log(`downloading progress ${req.id}: ${progressBar}%`)
-      // }
+      if (percents > progressBar + 9 || percents === 1 || percents === 100) {
+        progressBar = percents
+        console.log(`downloading progress ${req.id}: ${progressBar}%`)
+      }
     })
 
     form.on('file', function (_, file) {
@@ -83,7 +67,7 @@ export const createTaskController = async (req: express.Request, res: express.Re
         file: {
           value: filestream,
           options: {
-            filename: req.id,
+            filename: req.id + '.xlsx',
           }
         }
       }
@@ -93,7 +77,7 @@ export const createTaskController = async (req: express.Request, res: express.Re
     })
 
   } catch (error) {
-    console.log(error);
-    return res.sendStatus(400);
+    console.log(error)
+    return res.sendStatus(400)
   }
 }
