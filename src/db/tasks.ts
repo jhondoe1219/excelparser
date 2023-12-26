@@ -6,6 +6,7 @@ export const statuses = Object.freeze({
   UPLOADED_SERVICE_1: 'uploaded_service_1',
   UPLOADED_SERVICE_2: 'uploaded_service_2',
   PARSING_STARTED: 'parsing_started',
+  PARSING_ERROR: 'parsing_error',
   PARSED: 'parsed',
 })
 
@@ -19,7 +20,7 @@ const TaskSchema = new mongoose.Schema({
   pathFileServer1: { type: String },
   pathFileServer2: { type: String },
   taskname: { type: String },
-})
+}, { timestamps: true })
 
 export const TaskModel = mongoose.model('Task', TaskSchema)
 

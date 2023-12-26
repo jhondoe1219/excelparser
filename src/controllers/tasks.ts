@@ -61,7 +61,7 @@ export const createTaskController = async (req: express.Request, res: express.Re
       }
     })
 
-    form.on('file', function (_, file) {
+    form.on('file', async function (_, file) {
       const filestream = fs.createReadStream(file.path)
       const formData = {
         file: {
